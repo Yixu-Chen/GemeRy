@@ -6,7 +6,7 @@ const materials=[
  ['白水晶','#e1ecf5','round','圆形明亮式'],['乳白欧泊','#efe8d5','oval','椭圆弧面'],['月光石','#cad9df','pear','水滴弧面'],['蓝宝石','#164eab','step','长方阶梯式'],['黄水晶','#e5af2d','step','长方阶梯式'],['祖母绿','#087c59','ovalcut','椭圆刻面'],['粉碧玺','#d58a92','triangle','三角刻面'],['黄水晶','#e4b52e','heart','心形刻面'],['绿松石','#30a8af','marquise','马眼弧面'],['红宝石','#a91d55','round','圆形明亮式'],['蓝宝石','#205bb2','pear','水滴刻面'],['香槟水晶','#d4b36e','round','圆形明亮式']];
 const gems=[],IW=900,IH=1200;let selected=0,preview=false,zoom=1,pan={x:0,y:0},moving=false,W=0,H=0,fit=1,hover=0;
 function vertices(shape){let v=[];if(shape==='step')return[[-.72,-1],[.72,-1],[1,-.72],[1,.72],[.72,1],[-.72,1],[-1,.72],[-1,-.72]];if(shape==='triangle')return[[-1,-.65],[1,-.65],[0,1]];for(let i=0;i<48;i++){let t=i/48*Math.PI*2;if(shape==='heart')v.push([Math.pow(Math.sin(t),3),-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/17]);else if(shape==='pear')v.push([Math.sin(t)*(.74+.26*Math.cos(t)),Math.cos(t)]);else if(shape==='marquise')v.push([Math.sin(t)*Math.abs(Math.sin(t)),Math.cos(t)]);else v.push([Math.sin(t),Math.cos(t)])}return v}
-const shapes=materials.map(m=>vertices(m[2]));
+materials.push(['黑曜石','#151b25','round','圆形刻面']);const shapes=materials.map(m=>vertices(m[2]));
 function path(v,s=1){const p=new Path2D();v.forEach(([x,y],i)=>i?p.lineTo(x*s,y*s):p.moveTo(x*s,y*s));p.closePath();return p}
 const paths=shapes.map(v=>path(v));
 function add(x,y,size,c,angle=0){const ratio={round:1,oval:.67,pear:.61,step:.78,ovalcut:.65,triangle:1,heart:1,marquise:.48}[materials[c][2]],rx=size*ratio/2,ry=size/2,a=angle*Math.PI/180;let ca=Math.cos(a),sa=Math.sin(a);const v=shapes[c].map(([u,v])=>[x+u*rx*ca-v*ry*sa,y+u*rx*sa+v*ry*ca]);let b=[Math.min(...v.map(p=>p[0])),Math.min(...v.map(p=>p[1])),Math.max(...v.map(p=>p[0])),Math.max(...v.map(p=>p[1]))];
@@ -16,22 +16,28 @@ function curve(points,size,c,spacing=size+2){let carry=0;for(let k=1;k<points.le
 function bez(p,n=100){let out=[];for(let i=0;i<=n;i++){let t=i/n,u=1-t;out.push([u*u*u*p[0][0]+3*u*u*t*p[1][0]+3*u*t*t*p[2][0]+t*t*t*p[3][0],u*u*u*p[0][1]+3*u*u*t*p[1][1]+3*u*t*t*p[2][1]+t*t*t*p[3][1]])}return out}
 function inside(x,y,poly){let on=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let a=poly[i],b=poly[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])on=!on}return on}
 
-function ellipse(cx,cy,rx,ry,n=120,angle=0){let p=[],a=angle*Math.PI/180;for(let i=0;i<=n;i++){let t=i/n*Math.PI*2,x=rx*Math.cos(t),y=ry*Math.sin(t);p.push([cx+x*Math.cos(a)-y*Math.sin(a),cy+x*Math.sin(a)+y*Math.cos(a)])}return p}
-function fillShape(poly,c,size=30,angle=0){let xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);for(const s of [size,size*.64])for(let y=Math.min(...ys)+s/2,row=0;y<Math.max(...ys)-s/3;y+=s*.65,row++)for(let x=Math.min(...xs)+s/2+(row%2)*s*.3;x<Math.max(...xs)-s/3;x+=s*.65){if(inside(x,y,poly))add(x,y,s,c,typeof angle==='function'?angle(x,y):angle)}}
-function ring(cx,cy,rx,ry,c=0,size=8){curve(ellipse(cx,cy,rx,ry),size,c,size+2)}
 
-add(450,570,65,9);for(let y=630;y<855;y+=27)add(450,y,25,10);
-for(let sign of [-1,1]){
- let upper=bez([[450,540],[sign<0?150:750,150],[sign<0?65:835,300],[sign<0?144:756,550]]).concat(bez([[sign<0?144:756,550],[sign<0?170:730,710],[sign<0?330:570,660],[450,600]]));
- let lower=bez([[450,650],[sign<0?215:685,600],[sign<0?96:804,882],[sign<0?265:635,975]]).concat(bez([[sign<0?265:635,975],[sign<0?367:533,1005],[sign<0?418:482,792],[450,650]]));
- curve([...upper,upper[0]],9,0,11);curve([...lower,lower[0]],9,11,11);
- add(450+sign*188,450,117,8,sign*40);ring(450+sign*188,450,64,78,11,8);
- add(450+sign*151,800,90,9);ring(450+sign*151,800,59,64,0,8);
- for(let j=0;j<3;j++)curve(bez([[450,590],[450+sign*80,430+j*45],[450+sign*195,280+j*60],[450+sign*250,350+j*70]]),7,11,9);
- fillShape(upper,10,32,(x,y)=>sign*35);fillShape(lower,2,32,sign*-30);
- curve(bez([[450+sign*13,530],[450+sign*35,440],[450+sign*54,419],[450+sign*82,424]]),8,11,10);add(450+sign*82,424,20,9);
+
+
+
+// Arc-length sampled strokes: gem orientation and scale follow the drawing.
+function stroke(p,c,size=15){let carry=0,total=0;const ls=p.slice(1).map((v,i)=>Math.hypot(v[0]-p[i][0],v[1]-p[i][1]));const length=ls.reduce((a,b)=>a+b,0);for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],l=ls[i-1];while(carry<l){let t=carry/l,u=(total+carry)/length,s=typeof size==='function'?size(u):size;add(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,s,c,-Math.atan2(b[0]-a[0],b[1]-a[1])*180/Math.PI);carry+=s+2}carry-=l;total+=l}}
+function B(p){return bez(p,160)}
+function ribbon(a,b,cols,rows=7){let A=B(a),Bv=B(b);for(let j=0;j<rows;j++){let t=j/(rows-1);stroke(A.map((v,i)=>[v[0]*(1-t)+Bv[i][0]*t,v[1]*(1-t)+Bv[i][1]*t]),cols[Math.floor(t*cols.length)%cols.length],u=>10+9*Math.sin(Math.PI*u))}}
+
+add(450,552,32,9);stroke(B([[450,580],[438,655],[467,729],[450,790]]),11,u=>24-16*u);
+for(const s of [-1,1]){const P=p=>p.map(([x,y])=>[450+s*x,y]);
+ const top=P([[8,570],[125,440],[320,140],[340,300]]),bottom=P([[12,630],[170,730],[380,550],[340,300]]);
+ stroke(B(top),11,9);stroke(B(bottom),11,9);
+ ribbon(top,bottom,[10,10,2,2,9,9,1,1],19);
+ const low=P([[12,647],[220,610],[340,810],[170,1000]]),inner=P([[14,660],[35,740],[45,1005],[170,1000]]);
+ stroke(B(low),11,8);stroke(B(inner),11,8);ribbon(low,inner,[9,9,2,2,10,10,1],13);
+ for(let k=0;k<3;k++)stroke(B(P([[24,605+k*19],[95,535+k*35],[228,435+k*45],[320-k*14,345+k*43]])),11,7);
+ stroke(B(P([[7,541],[26,480],[79,460],[75,421]])),11,7);add(450+s*75,421,14,1);
+ stroke(B(P([[150,934],[115,1040],[230,1070],[241,987]])),2,u=>7+9*Math.sin(Math.PI*u));
 }
-const key='gallery-butterfly-1';let filled=new Set;try{filled=new Set(JSON.parse(localStorage.getItem(key)||'[]').filter(id=>id>0&&id<=gems.length))}catch{}
+add(450,552,32,9);stroke(B([[450,580],[438,655],[467,729],[450,790]]),11,u=>24-16*u);
+const key='gallery-butterfly-flow-2';let filled=new Set;try{filled=new Set(JSON.parse(localStorage.getItem(key)||'[]').filter(id=>id>0&&id<=gems.length))}catch{}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16))}function tone(hex,f){return 'rgb('+rgb(hex).map(v=>Math.round(f>=0?v+(255-v)*f:v*(1+f))).join(',')+')'}
 const sprites=materials.map((m,c)=>{let b=document.createElement('canvas');b.width=b.height=160;let q=b.getContext('2d');q.translate(80,80);q.scale(69,69);q.fillStyle=m[1];q.fill(paths[c]);q.save();q.clip(paths[c]);let grad=q.createLinearGradient(-1,-1,1,1);grad.addColorStop(0,tone(m[1],.7));grad.addColorStop(.3,m[1]);grad.addColorStop(.66,tone(m[1],-.45));grad.addColorStop(1,tone(m[1],.2));q.fillStyle=grad;q.fillRect(-1,-1,2,2);
  let cab=['oval','marquise'].includes(m[2])||c===2;

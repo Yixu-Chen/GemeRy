@@ -6,7 +6,7 @@ const materials=[
  ['白水晶','#e1ecf5','round','圆形明亮式'],['乳白欧泊','#efe8d5','oval','椭圆弧面'],['月光石','#cad9df','pear','水滴弧面'],['蓝宝石','#164eab','step','长方阶梯式'],['黄水晶','#e5af2d','step','长方阶梯式'],['祖母绿','#087c59','ovalcut','椭圆刻面'],['粉碧玺','#d58a92','triangle','三角刻面'],['黄水晶','#e4b52e','heart','心形刻面'],['绿松石','#30a8af','marquise','马眼弧面'],['红宝石','#a91d55','round','圆形明亮式'],['蓝宝石','#205bb2','pear','水滴刻面'],['香槟水晶','#d4b36e','round','圆形明亮式']];
 const gems=[],IW=900,IH=1200;let selected=0,preview=false,zoom=1,pan={x:0,y:0},moving=false,W=0,H=0,fit=1,hover=0;
 function vertices(shape){let v=[];if(shape==='step')return[[-.72,-1],[.72,-1],[1,-.72],[1,.72],[.72,1],[-.72,1],[-1,.72],[-1,-.72]];if(shape==='triangle')return[[-1,-.65],[1,-.65],[0,1]];for(let i=0;i<48;i++){let t=i/48*Math.PI*2;if(shape==='heart')v.push([Math.pow(Math.sin(t),3),-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/17]);else if(shape==='pear')v.push([Math.sin(t)*(.74+.26*Math.cos(t)),Math.cos(t)]);else if(shape==='marquise')v.push([Math.sin(t)*Math.abs(Math.sin(t)),Math.cos(t)]);else v.push([Math.sin(t),Math.cos(t)])}return v}
-const shapes=materials.map(m=>vertices(m[2]));
+materials.push(['黑曜石','#151b25','round','圆形刻面']);const shapes=materials.map(m=>vertices(m[2]));
 function path(v,s=1){const p=new Path2D();v.forEach(([x,y],i)=>i?p.lineTo(x*s,y*s):p.moveTo(x*s,y*s));p.closePath();return p}
 const paths=shapes.map(v=>path(v));
 function add(x,y,size,c,angle=0){const ratio={round:1,oval:.67,pear:.61,step:.78,ovalcut:.65,triangle:1,heart:1,marquise:.48}[materials[c][2]],rx=size*ratio/2,ry=size/2,a=angle*Math.PI/180;let ca=Math.cos(a),sa=Math.sin(a);const v=shapes[c].map(([u,v])=>[x+u*rx*ca-v*ry*sa,y+u*rx*sa+v*ry*ca]);let b=[Math.min(...v.map(p=>p[0])),Math.min(...v.map(p=>p[1])),Math.max(...v.map(p=>p[0])),Math.max(...v.map(p=>p[1]))];
@@ -16,19 +16,32 @@ function curve(points,size,c,spacing=size+2){let carry=0;for(let k=1;k<points.le
 function bez(p,n=100){let out=[];for(let i=0;i<=n;i++){let t=i/n,u=1-t;out.push([u*u*u*p[0][0]+3*u*u*t*p[1][0]+3*u*t*t*p[2][0]+t*t*t*p[3][0],u*u*u*p[0][1]+3*u*u*t*p[1][1]+3*u*t*t*p[2][1]+t*t*t*p[3][1]])}return out}
 function inside(x,y,poly){let on=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let a=poly[i],b=poly[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])on=!on}return on}
 
-function ellipse(cx,cy,rx,ry,n=120,angle=0){let p=[],a=angle*Math.PI/180;for(let i=0;i<=n;i++){let t=i/n*Math.PI*2,x=rx*Math.cos(t),y=ry*Math.sin(t);p.push([cx+x*Math.cos(a)-y*Math.sin(a),cy+x*Math.sin(a)+y*Math.cos(a)])}return p}
-function fillShape(poly,c,size=30,angle=0){let xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);for(const s of [size,size*.64])for(let y=Math.min(...ys)+s/2,row=0;y<Math.max(...ys)-s/3;y+=s*.65,row++)for(let x=Math.min(...xs)+s/2+(row%2)*s*.3;x<Math.max(...xs)-s/3;x+=s*.65){if(inside(x,y,poly))add(x,y,s,c,typeof angle==='function'?angle(x,y):angle)}}
-function ring(cx,cy,rx,ry,c=0,size=8){curve(ellipse(cx,cy,rx,ry),size,c,size+2)}
 
-const body=ellipse(450,680,235,320);curve(body,9,11,11);
-for(let sign of [-1,1]){const ear=[[450+sign*65,365],[450+sign*210,245],[450+sign*218,460]];curve([...ear,ear[0]],8,0,10);fillShape(ear,10,29,sign*25)}
-for(let sign of [-1,1]){let x=450+sign*100;add(x,490,95,5);ring(x,490,76,86,0,8);ring(x,490,91,101,11,7);fillShape(ellipse(x,490,84,95),1,27,sign*30)}
-add(450,577,45,6);add(450,676,62,7);
-for(let sign of [-1,1]){let wing=ellipse(450+sign*155,741,62,187,100,sign*-14);curve(wing,7,0,9);fillShape(wing,10,38,sign*15);for(let j=0;j<3;j++)add(450+sign*(70+j*23),1000,26,4,0)}
-fillShape(body,2,34,(x,y)=>(x-450)*.15);
-curve([[155,1035],[745,1035]],17,11,20);
-for(let k=0;k<40;k++){let t=k/39*Math.PI*1.6;add(450+Math.cos(t)*300,400+Math.sin(t)*240,8,0)}
-const key='gallery-owl-1';let filled=new Set;try{filled=new Set(JSON.parse(localStorage.getItem(key)||'[]').filter(id=>id>0&&id<=gems.length))}catch{}
+
+
+
+// Arc-length sampled strokes: gem orientation and scale follow the drawing.
+function stroke(p,c,size=15){let carry=0,total=0;const ls=p.slice(1).map((v,i)=>Math.hypot(v[0]-p[i][0],v[1]-p[i][1]));const length=ls.reduce((a,b)=>a+b,0);for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],l=ls[i-1];while(carry<l){let t=carry/l,u=(total+carry)/length,s=typeof size==='function'?size(u):size;add(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,s,c,-Math.atan2(b[0]-a[0],b[1]-a[1])*180/Math.PI);carry+=s+2}carry-=l;total+=l}}
+function B(p){return bez(p,160)}
+function ribbon(a,b,cols,rows=7){let A=B(a),Bv=B(b);for(let j=0;j<rows;j++){let t=j/(rows-1);stroke(A.map((v,i)=>[v[0]*(1-t)+Bv[i][0]*t,v[1]*(1-t)+Bv[i][1]*t]),cols[Math.floor(t*cols.length)%cols.length],u=>10+9*Math.sin(Math.PI*u))}}
+
+// Soft heart-shaped facial disc, sweeping folded wings, scalloped breast.
+for(const s of [-1,1]){let cx=450+s*93;add(cx,476,40,12);for(let r=38;r<85;r+=15){let p=[];for(let k=0;k<=120;k++){let a=k/120*Math.PI*2;p.push([cx+r*Math.cos(a),476+r*.95*Math.sin(a)])}stroke(p,r<55?11:1,12)}}
+add(450,565,34,4);
+for(const s of [-1,1]){const P=p=>p.map(([x,y])=>[450+s*x,y]);
+ const edge=P([[0,625],[330,460],[235,330],[155,350]]),inset=P([[0,625],[90,490],[75,372],[155,350]]);
+ stroke(B(edge),11,9);ribbon(edge,inset,[10,10,2,1,1],13);
+ const brow=P([[0,444],[76,353],[150,375],[194,447]]);stroke(B(brow),1,u=>12+10*Math.sin(Math.PI*u));
+ let cx=450+s*93;add(cx,476,46,5);add(cx-s*6,469,12,0);
+ stroke(B(P([[37,487],[68,542],[133,550],[167,476]])),11,8);
+ const outer=P([[169,537],[329,665],[249,905],[55,1020]]),inner=P([[169,537],[104,684],[109,862],[55,1020]]);
+ stroke(B(outer),11,9);ribbon(outer,inner,[10,10,8,8,2,2],14);
+ for(let k=0;k<4;k++)stroke(B(P([[151+k*8,609+k*20],[240,715],[167,848+k*15],[73,972]])),11,6);
+}
+add(450,565,34,4);for(let row=0;row<10;row++){let y=620+row*32,w=90-row*4;for(let j=-2;j<=2;j++)stroke(B([[450+j*w/2-w/4,y],[450+j*w/2-w/5,y+21],[450+j*w/2+w/5,y+21],[450+j*w/2+w/4,y]]),row%3===0?11:1,11)}
+stroke(B([[205,1053],[360,1085],[548,1012],[706,1041]]),11,u=>10+6*Math.sin(u*Math.PI));
+for(const s of [-1,1])for(let j=0;j<3;j++)add(450+s*(41+j*13),1034+j*2,20,4,10*s);
+const key='gallery-owl-flow-2';let filled=new Set;try{filled=new Set(JSON.parse(localStorage.getItem(key)||'[]').filter(id=>id>0&&id<=gems.length))}catch{}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16))}function tone(hex,f){return 'rgb('+rgb(hex).map(v=>Math.round(f>=0?v+(255-v)*f:v*(1+f))).join(',')+')'}
 const sprites=materials.map((m,c)=>{let b=document.createElement('canvas');b.width=b.height=160;let q=b.getContext('2d');q.translate(80,80);q.scale(69,69);q.fillStyle=m[1];q.fill(paths[c]);q.save();q.clip(paths[c]);let grad=q.createLinearGradient(-1,-1,1,1);grad.addColorStop(0,tone(m[1],.7));grad.addColorStop(.3,m[1]);grad.addColorStop(.66,tone(m[1],-.45));grad.addColorStop(1,tone(m[1],.2));q.fillStyle=grad;q.fillRect(-1,-1,2,2);
  let cab=['oval','marquise'].includes(m[2])||c===2;

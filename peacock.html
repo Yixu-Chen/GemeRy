@@ -6,7 +6,7 @@ const materials=[
  ['白水晶','#e1ecf5','round','圆形明亮式'],['乳白欧泊','#efe8d5','oval','椭圆弧面'],['月光石','#cad9df','pear','水滴弧面'],['蓝宝石','#164eab','step','长方阶梯式'],['黄水晶','#e5af2d','step','长方阶梯式'],['祖母绿','#087c59','ovalcut','椭圆刻面'],['粉碧玺','#d58a92','triangle','三角刻面'],['黄水晶','#e4b52e','heart','心形刻面'],['绿松石','#30a8af','marquise','马眼弧面'],['红宝石','#a91d55','round','圆形明亮式'],['蓝宝石','#205bb2','pear','水滴刻面'],['香槟水晶','#d4b36e','round','圆形明亮式']];
 const gems=[],IW=900,IH=1200;let selected=0,preview=false,zoom=1,pan={x:0,y:0},moving=false,W=0,H=0,fit=1,hover=0;
 function vertices(shape){let v=[];if(shape==='step')return[[-.72,-1],[.72,-1],[1,-.72],[1,.72],[.72,1],[-.72,1],[-1,.72],[-1,-.72]];if(shape==='triangle')return[[-1,-.65],[1,-.65],[0,1]];for(let i=0;i<48;i++){let t=i/48*Math.PI*2;if(shape==='heart')v.push([Math.pow(Math.sin(t),3),-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))/17]);else if(shape==='pear')v.push([Math.sin(t)*(.74+.26*Math.cos(t)),Math.cos(t)]);else if(shape==='marquise')v.push([Math.sin(t)*Math.abs(Math.sin(t)),Math.cos(t)]);else v.push([Math.sin(t),Math.cos(t)])}return v}
-const shapes=materials.map(m=>vertices(m[2]));
+materials.push(['黑曜石','#151b25','round','圆形刻面']);const shapes=materials.map(m=>vertices(m[2]));
 function path(v,s=1){const p=new Path2D();v.forEach(([x,y],i)=>i?p.lineTo(x*s,y*s):p.moveTo(x*s,y*s));p.closePath();return p}
 const paths=shapes.map(v=>path(v));
 function add(x,y,size,c,angle=0){const ratio={round:1,oval:.67,pear:.61,step:.78,ovalcut:.65,triangle:1,heart:1,marquise:.48}[materials[c][2]],rx=size*ratio/2,ry=size/2,a=angle*Math.PI/180;let ca=Math.cos(a),sa=Math.sin(a);const v=shapes[c].map(([u,v])=>[x+u*rx*ca-v*ry*sa,y+u*rx*sa+v*ry*ca]);let b=[Math.min(...v.map(p=>p[0])),Math.min(...v.map(p=>p[1])),Math.max(...v.map(p=>p[0])),Math.max(...v.map(p=>p[1]))];
@@ -16,22 +16,36 @@ function curve(points,size,c,spacing=size+2){let carry=0;for(let k=1;k<points.le
 function bez(p,n=100){let out=[];for(let i=0;i<=n;i++){let t=i/n,u=1-t;out.push([u*u*u*p[0][0]+3*u*u*t*p[1][0]+3*u*t*t*p[2][0]+t*t*t*p[3][0],u*u*u*p[0][1]+3*u*u*t*p[1][1]+3*u*t*t*p[2][1]+t*t*t*p[3][1]])}return out}
 function inside(x,y,poly){let on=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){let a=poly[i],b=poly[j];if((a[1]>y)!=(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])on=!on}return on}
 
-function ellipse(cx,cy,rx,ry,n=120,angle=0){let p=[],a=angle*Math.PI/180;for(let i=0;i<=n;i++){let t=i/n*Math.PI*2,x=rx*Math.cos(t),y=ry*Math.sin(t);p.push([cx+x*Math.cos(a)-y*Math.sin(a),cy+x*Math.sin(a)+y*Math.cos(a)])}return p}
-function fillShape(poly,c,size=30,angle=0){let xs=poly.map(p=>p[0]),ys=poly.map(p=>p[1]);for(const s of [size,size*.64])for(let y=Math.min(...ys)+s/2,row=0;y<Math.max(...ys)-s/3;y+=s*.65,row++)for(let x=Math.min(...xs)+s/2+(row%2)*s*.3;x<Math.max(...xs)-s/3;x+=s*.65){if(inside(x,y,poly))add(x,y,s,c,typeof angle==='function'?angle(x,y):angle)}}
-function ring(cx,cy,rx,ry,c=0,size=8){curve(ellipse(cx,cy,rx,ry),size,c,size+2)}
 
-// Separate feather strokes radiate from the breast.
-for(let j=-5;j<=5;j++){
- let a=j*.19,tip=[450+Math.sin(a)*330,505-Math.cos(a)*275];
- let stalk=bez([[450,884],[450+Math.sin(a)*140,660],[tip[0],tip[1]+130],tip]);curve(stalk,9,11,12);
- add(tip[0],tip[1]+20,66,8,-a*180/Math.PI);add(tip[0],tip[1]-22,23,9);
- for(let k=0;k<7;k++){let y=tip[1]+85+k*55,t=(y-tip[1])/(884-tip[1]),cx=tip[0]*(1-t)+450*t;for(let sign of [-1,1])add(cx+sign*(22+12*Math.sin(t*Math.PI)),y,37,10,sign*32-a*180/Math.PI)}
+
+
+
+// Arc-length sampled strokes: gem orientation and scale follow the drawing.
+function stroke(p,c,size=15){let carry=0,total=0;const ls=p.slice(1).map((v,i)=>Math.hypot(v[0]-p[i][0],v[1]-p[i][1]));const length=ls.reduce((a,b)=>a+b,0);for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],l=ls[i-1];while(carry<l){let t=carry/l,u=(total+carry)/length,s=typeof size==='function'?size(u):size;add(a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,s,c,-Math.atan2(b[0]-a[0],b[1]-a[1])*180/Math.PI);carry+=s+2}carry-=l;total+=l}}
+function B(p){return bez(p,160)}
+function ribbon(a,b,cols,rows=7){let A=B(a),Bv=B(b);for(let j=0;j<rows;j++){let t=j/(rows-1);stroke(A.map((v,i)=>[v[0]*(1-t)+Bv[i][0]*t,v[1]*(1-t)+Bv[i][1]*t]),cols[Math.floor(t*cols.length)%cols.length],u=>10+9*Math.sin(Math.PI*u))}}
+add(486,600,51,10,-25);add(514,594,9,0);add(525,614,26,4,75);
+
+// Reserve the animal silhouette before laying down background plumage.
+ribbon([[456,954],[351,836],[525,731],[486,620]],[[531,955],[453,834],[579,727],[486,620]],[10,10,2,8],10);
+add(486,600,51,10,-25);add(514,594,9,0);add(525,614,26,4,75);
+for(let k=0;k<5;k++){stroke(B([[478,575],[467,553],[445+k*15,551],[445+k*15,528]]),11,5);add(445+k*15,524,12,8)}
+stroke(B([[465,952],[458,1000],[455,1033],[430,1041]]),11,9);stroke(B([[503,951],[516,1004],[521,1035],[548,1040]]),11,9);
+for(let j=0;j<11;j++){let a=-1.22+j*.231,x=450+Math.sin(a)*345,y=565-Math.cos(a)*340;add(x,y+25,32,10,-a*180/Math.PI);for(let r of [25,37]){let p=[];for(let k=0;k<=100;k++){let t=k/100*Math.PI*2;p.push([x+r*.75*Math.cos(t),y+25+r*Math.sin(t)])}stroke(p,r===25?8:11,8)}}
+// An asymmetrical fan of curved feather plumes, with nested flowing eyes.
+for(let j=0;j<11;j++){let a=-1.22+j*.231,tip=[450+Math.sin(a)*345,565-Math.cos(a)*340];
+ let base=[456,941],control=[450+Math.sin(a)*210,700];
+ stroke(B([base,control,[tip[0]+58,tip[1]+150],tip]),11,7);
+ for(let side of [-1,1])for(let row=0;row<3;row++){
+ let off=side*(24+row*17);stroke(B([base,[control[0]+off*.7,control[1]],[tip[0]+off*1.6+30,tip[1]+110],[tip[0],tip[1]-27]]),row===2?11:row===1?8:5,u=>8+12*Math.sin(Math.PI*u));}
+ add(tip[0],tip[1]+15,35,10,-a*180/Math.PI);add(tip[0],tip[1]-14,14,11);
 }
-const torso=ellipse(450,832,86,170);curve(torso,8,0,10);fillShape(torso,8,29,(x,y)=>(x-450)*.2);
-let neck=bez([[451,804],[357,707],[380,570],[453,549]]);curve(neck,35,10,36);add(464,540,64,10);add(479,527,9,0);add(501,550,28,4,90);
-for(let j=-2;j<=2;j++){curve([[448,517],[430+j*20,466]],5,11,7);add(430+j*20,461,16,9)}
-curve([[421,975],[410,1052],[380,1068]],10,11,13);curve([[476,975],[484,1052],[514,1068]],10,11,13);
-const key='gallery-peacock-1';let filled=new Set;try{filled=new Set(JSON.parse(localStorage.getItem(key)||'[]').filter(id=>id>0&&id<=gems.length))}catch{}
+// Foreground swan-like neck, small head, and a long curled train.
+ribbon([[456,954],[351,836],[525,731],[486,620]],[[511,955],[432,834],[572,727],[486,620]],[10,10,2,8],7);
+add(486,611,42,10,-25);add(493,604,7,0);add(516,617,23,4,75);
+for(let k=0;k<5;k++){stroke(B([[478,589],[467,568],[445+k*15,566],[445+k*15,543]]),11,5);add(445+k*15,539,12,8)}
+for(let j=0;j<5;j++)stroke(B([[469+j*10,939],[620+j*15,1010],[332-j*18,1144],[299-j*8,1000]]),j%2?8:11,u=>8+9*Math.sin(Math.PI*u));
+const key='gallery-peacock-flow-2';let filled=new Set;try{filled=new Set(JSON.parse(localStorage.getItem(key)||'[]').filter(id=>id>0&&id<=gems.length))}catch{}
 function rgb(hex){return [1,3,5].map(i=>parseInt(hex.slice(i,i+2),16))}function tone(hex,f){return 'rgb('+rgb(hex).map(v=>Math.round(f>=0?v+(255-v)*f:v*(1+f))).join(',')+')'}
 const sprites=materials.map((m,c)=>{let b=document.createElement('canvas');b.width=b.height=160;let q=b.getContext('2d');q.translate(80,80);q.scale(69,69);q.fillStyle=m[1];q.fill(paths[c]);q.save();q.clip(paths[c]);let grad=q.createLinearGradient(-1,-1,1,1);grad.addColorStop(0,tone(m[1],.7));grad.addColorStop(.3,m[1]);grad.addColorStop(.66,tone(m[1],-.45));grad.addColorStop(1,tone(m[1],.2));q.fillStyle=grad;q.fillRect(-1,-1,2,2);
  let cab=['oval','marquise'].includes(m[2])||c===2;
