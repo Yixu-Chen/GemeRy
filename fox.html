@@ -53,25 +53,26 @@ function save(){try{localStorage.setItem(key,JSON.stringify([...filled]))}catch{
 function hit(x,y){let p={x:(x-W/2-pan.x)/(fit*zoom)+IW/2,y:(y-H/2-pan.y)/(fit*zoom)+IH/2};return gems.find(g=>p.x>=g.b[0]&&p.x<=g.b[2]&&p.y>=g.b[1]&&p.y<=g.b[3]&&inside(p.x,p.y,g.v))}
 
 // Tolerance is measured in screen pixels, independent of canvas zoom.
-function tapTarget(x,y,radius=28){
+function tapTarget(x,y,radius=20,includeFilled=false){
  const scale=fit*zoom,px=(x-W/2-pan.x)/scale+IW/2,py=(y-H/2-pan.y)/scale+IH/2;
  let best=null,bestDistance=Infinity;
- for(const g of gems){if(g.c!==selected||filled.has(g.id))continue;
+ for(const g of gems){if(g.c!==selected||(!includeFilled&&filled.has(g.id)))continue;
   if(inside(px,py,g.v))return g;
   if(px<g.b[0]-radius/scale||px>g.b[2]+radius/scale||py<g.b[1]-radius/scale||py>g.b[3]+radius/scale)continue;
   let distance=Infinity;for(let i=0;i<g.v.length;i++){const a=g.v[i],b=g.v[(i+1)%g.v.length],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((px-a[0])*dx+(py-a[1])*dy)/(dx*dx+dy*dy||1)));distance=Math.min(distance,Math.hypot(px-a[0]-t*dx,py-a[1]-t*dy)*scale)}
   if(distance<=radius&&distance<bestDistance){best=g;bestDistance=distance}
  }return best;
 }
-function place(x,y,radius=28){if(preview)return;let g=tapTarget(x,y,radius);if(!g||g.c!==selected||filled.has(g.id))return;filled.add(g.id);hover=0;save();update();if(filled.size===gems.length)$('done').showModal()}
+function place(x,y,radius=20,stroke=false){if(preview)return;let g=tapTarget(x,y,radius,stroke);if(!g||g.c!==selected||filled.has(g.id))return;filled.add(g.id);hover=0;save();update();if(filled.size===gems.length)$('done').showModal()}
 
 const pointers=new Map();let gesture=null,gestureUsed=false,dragged=false,startPoint=null,paintGesture=false;
 function point(e){const r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
 function pair(){const [a,b]=[...pointers.values()];return{x:(a.x+b.x)/2,y:(a.y+b.y)/2,d:Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))}}
-function paintLine(a,b){const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/14));for(let i=0;i<=n;i++)place(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n)}
+let strokeRemainder=0;
+function paintLine(a,b){const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(!dragged){strokeRemainder=0;place(a.x,a.y,20,true)}if(!len)return;let d=8-strokeRemainder;for(;d<=len;d+=8)place(a.x+dx*d/len,a.y+dy*d/len,20,true);strokeRemainder=(strokeRemainder+len)%8}
 canvas.onpointerdown=e=>{e.preventDefault();canvas.setPointerCapture(e.pointerId);const p=point(e);pointers.set(e.pointerId,p);if(pointers.size===1){gestureUsed=false;dragged=false;startPoint=p;paintGesture=!preview}else{gestureUsed=true;gesture=pair()}render()};
 canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;e.preventDefault();const old=pointers.get(e.pointerId),p=point(e);pointers.set(e.pointerId,p);if(pointers.size>=2){const next=pair();if(gesture){z(next.d/gesture.d,gesture.x,gesture.y);pan.x+=next.x-gesture.x;pan.y+=next.y-gesture.y}gesture=next}else if(!gestureUsed&&!preview){if(Math.hypot(p.x-old.x,p.y-old.y)>0){paintLine(dragged?old:startPoint,p);dragged=true}}render()};
-function endPointer(e,cancelled=false){if(!pointers.has(e.pointerId))return;if(!cancelled&&!gestureUsed&&!dragged&&pointers.size===1&&startPoint&&Math.hypot(point(e).x-startPoint.x,point(e).y-startPoint.y)<=10){const p=point(e);place(p.x,p.y,e.pointerType==='mouse'?12:28)}pointers.delete(e.pointerId);gesture=null;if(!pointers.size)gestureUsed=false;render()}
+function endPointer(e,cancelled=false){if(!pointers.has(e.pointerId))return;if(!cancelled&&!gestureUsed&&!dragged&&pointers.size===1&&startPoint&&Math.hypot(point(e).x-startPoint.x,point(e).y-startPoint.y)<=10){const p=point(e);place(p.x,p.y,e.pointerType==='mouse'?12:20)}pointers.delete(e.pointerId);gesture=null;if(!pointers.size)gestureUsed=false;render()}
 canvas.onpointerup=e=>endPointer(e);canvas.onpointercancel=e=>endPointer(e,true);canvas.onlostpointercapture=e=>endPointer(e,true);canvas.oncontextmenu=e=>e.preventDefault();
 window.addEventListener('blur',()=>{pointers.clear();gesture=null;gestureUsed=false});
 function z(f,x=W/2,y=H/2){let prev=zoom;zoom=Math.max(1,Math.min(12,zoom*f));let r=zoom/prev;pan.x=(pan.x+W/2-x)*r+x-W/2;pan.y=(pan.y+H/2-y)*r+y-H/2;render()}
